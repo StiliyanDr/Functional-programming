@@ -4,12 +4,16 @@
   (lambda (number)
     (- number 1)))
 
+(define square
+  (lambda (number)
+    (* number number)))
+
 (define fastExpt
   (lambda (number n)
     (cond
       [(= n 0) 1]
-      [(even? n) (let ([halfProduct (fastExpt number (quotient n 2))])
-                   (* halfProduct halfProduct))]
+      [(< n 0) (/ 1 (fastExpt number (- n)))]
+      [(even? n) (square (fastExpt number (quotient n 2)))]
       [else (* number (fastExpt number (-- n)))])))
 
 (module+ test
@@ -17,7 +21,9 @@
 
   (check-eq? (fastExpt 2 0) 1)
   (check-eq? (fastExpt 2 5) 32)
-  (check-eq? (fastExpt 2 6) 64))
+  (check-eq? (fastExpt 2 6) 64)
+  (check-eqv? (fastExpt 2 -5) 1/32)
+  (check-eqv? (fastExpt 2 -6) 1/64))
 
 (define rootsCount
   (lambda (a b c)
@@ -49,15 +55,15 @@
   (lambda (n)
     (letrec ([fib (lambda (a b n)
                     (cond
-                      [(= n 1) a]
-                      [(= n 2) b]
+                      [(= n 0) a]
+                      [(= n 1) b]
                       [else (fib b (+ a b) (-- n))]))])
       (fib 0 1 n))))
 
 (module+ test
-  (check-eq? (fibonacci 1) 0)
-  (check-eq? (fibonacci 2) 1)
-  (check-eq? (fibonacci 8) 13))
+  (check-eq? (fibonacci 0) 0)
+  (check-eq? (fibonacci 1) 1)
+  (check-eq? (fibonacci 7) 13))
 
 (define lastDigitOf
   (lambda (number)
@@ -105,13 +111,12 @@
 
 (define sumDivisorsOf
   (lambda (number)
-    (letrec ([doSum (lambda (number candidate sum)
+    (letrec ([doSum (lambda (candidate sum)
                       (if (= candidate 1)
                           (+ sum 1)
-                          (doSum number
-                                 (-- candidate)
+                          (doSum (-- candidate)
                                  (+ (if (divides? candidate number) candidate 0) sum))))])
-      (doSum number number 0))))
+      (doSum number 0))))
 
 (module+ test
   (check-eq? (sumDivisorsOf 1) 1)
