@@ -13,7 +13,7 @@
     (cond
       [(= n 0) 1]
       [(< n 0) (/ 1 (fastExpt number (- n)))]
-      [(even? n) (square (fastExpt number (quotient n 2)))]
+      [(even? n) (square (fastExpt number (/ n 2)))]
       [else (* number (fastExpt number (-- n)))])))
 
 (module+ test
@@ -139,12 +139,13 @@
 
 (define prime?
   (lambda (number)
-    (letrec ([hasDivisor? (lambda (number candidate)
-                            (and (< candidate number)
+    (define sqrtNumber (sqrt number))
+    (letrec ([hasDivisor? (lambda (candidate)
+                            (and (<= candidate sqrtNumber)
                                  (or (divides? candidate number)
-                                     (hasDivisor? number (++ candidate)))))])
+                                     (hasDivisor? (++ candidate)))))])
       (not (or (= number 1)
-               (hasDivisor? number 2))))))
+               (hasDivisor? 2))))))
 
 (module+ test
   (check-false (prime? 1))
