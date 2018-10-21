@@ -169,16 +169,20 @@
   (check-false (increasing? 12134))
   (check-false (increasing? 12234)))
 
-(define toBinary
-  (lambda (number)
-    (letrec ([convert (lambda (rest result factor)
+(define numberSystemNToK
+  (lambda (number n k)
+    (letrec ([convert (lambda (rest result powerOfN)
                         (if (= rest 0)
                             result
-                            (let ([bit (modulo rest 2)])
-                              (convert (quotient rest 2)
-                                       (+ (* factor bit) result)
-                                       (* 10 factor)))))])
+                            (let ([digit (modulo rest k)])
+                              (convert (quotient rest k)
+                                       (+ (* powerOfN digit) result)
+                                       (* n powerOfN)))))])
       (convert number 0 1))))
+
+(define toBinary
+  (lambda (number)
+    (numberSystemNToK number 10 2)))
 
 (module+ test
   (check-eq? (toBinary 0) 0)
@@ -188,13 +192,7 @@
 
 (define toDecimal
   (lambda (binaryNumber)
-    (letrec ([convert (lambda (restOfBinaryNumber powerOfTwo result)
-                        (if (= restOfBinaryNumber 0)
-                            result
-                            (convert (removeLastDigitOf restOfBinaryNumber)
-                                     (* 2 powerOfTwo)
-                                     (+ result (* powerOfTwo (lastDigitOf restOfBinaryNumber))))))])
-    (convert binaryNumber 1 0))))
+    (numberSystemNToK binaryNumber 2 10)))
 
 (module+ test
   (check-eq? (toDecimal 0) 0)
