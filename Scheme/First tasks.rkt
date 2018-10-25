@@ -1,5 +1,7 @@
 #lang racket/base
 
+(provide ++ -- square)
+
 (define --
   (lambda (number)
     (- number 1)))
