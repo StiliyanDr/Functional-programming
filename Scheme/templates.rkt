@@ -47,4 +47,4 @@
 
 (define foldl1
   (lambda (operation nonEmptyList)
-    (foldl operation (car nonEmptyList) (cdr nonEmptyList))))s
+    (foldl operation (car nonEmptyList) (cdr nonEmptyList))))
