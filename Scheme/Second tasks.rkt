@@ -1,5 +1,6 @@
 #lang racket/base
 (require rackunit)
+(require rackunit/text-ui)
 
 (define ++
   (lambda (number)
@@ -13,45 +14,36 @@
   (lambda (x) x))
 
 (define accumulate
-  (lambda (operation result from to step mapFunction stop?)
-    (if (stop? from to)
-        result
-        (accumulate operation
-                    (operation (mapFunction from) result)
-                    (step from)
-                    to
-                    step
-                    mapFunction
-                    stop?))))
+  (lambda (operation neutralElement from to term next)
+    (if (> from to)
+        neutralElement
+        (operation (term from)
+                   (accumulate neutralElement (next from) to term next)))))
 
-(define sumList
-  (lambda (list)
-    (accumulate + 0 list '() cdr car eqv?)))
+(define accumulate-i
+  (lambda (operation neutralElement from to term next)
+    (if (> from to)
+        neutralElement
+        (accumulate-i operation
+                      (operation neutralElement (term from))
+                      (next from)
+                      to
+                      term
+                      next))))
 
-(define-test-suite testSumList
-  [test-case "sum of empty list is zero"
-             (check-equal? (sumList '()) 0)]
-
-  [test-case "sum of single element list is the element"
-             (check-equal? (sumList '(8)) 8)]
-
-  [test-case "sum of list with more than one element"
-             (check-equal? (sumList '(1 2 3 4 5)) 15)]
-  )
-
-(define sumRangeSimple
+(define sumRange
   (lambda (from to)
-    (accumulate + 0 from to ++ id >)))
+    (accumulate-i + 0 from to id ++)))
 
 (module+ test
-  (check-equal? (sumRangeSimple 1 0) 0)
-  (check-equal? (sumRangeSimple 0 0) 0)
-  (check-equal? (sumRangeSimple 1 10) 55)
+  (check-equal? (sumRange 1 0) 0)
+  (check-equal? (sumRange 0 0) 0)
+  (check-equal? (sumRange 1 10) 55)
   )
 
 (define !!
   (lambda (number)
-    (accumulate * 1 number 1 (lambda (x) (- x 2)) id <)))
+    (accumulate-i * 1 (if (odd? number) 3 2) number id (lambda (x) (+ x 2)))))
 
 (define-test-suite testDoubleFactorial
   [test-case "0!! = 1"
@@ -67,9 +59,11 @@
              (check-equal? (!! 9) 945)]
   )
 
+(run-tests testDoubleFactorial)
+
 (define nChooseK
   (lambda (n k)
-    (accumulate * 1 1 k ++ (lambda (i) (/ (++ (- n i)) i)) >)))
+    (accumulate-i * 1 1 k (lambda (i) (/ (++ (- n i)) i)) ++)))
 
 (define-test-suite testNChooseK
   [test-case "n choose n is 1"
@@ -85,36 +79,37 @@
              (check-equal? (nChooseK 10000 9999) 10000)]
   )
 
-(define sumRange
-  (lambda (from to)
-    (nChooseK (++ to) 2)))
+(run-tests testNChooseK)
 
-(define-test-suite testSumRange
+(define sum1ToN
+  (lambda (n)
+    (nChooseK (++ n) 2)))
+
+(define-test-suite testSum1ToN
   [test-case "sum of empty range is 0"
-             (check-equal? (sumRange 1 0) 0)]
-
-  [test-case "sum of single element range is the element"
-             (check-equal? (sumRange 10 10) 10)]
+             (check-equal? (sum1ToN 0) 0)]
 
   [test-case "sum range with more than one element"
-             (check-equal? (sumRange 1 10) 55)]
+             (check-equal? (sum1ToN 10) 55)]
   )
+
+(run-tests testSum1ToN)
 
 (define twoPowerNSimple
   (lambda (n)
-    (accumulate * 1 1 n ++ (lambda (i) 2) >)))
+    (accumulate-i * 1 1 n (lambda (i) 2) ++)))
 
 (define twoPowerN
   (lambda (n)
-    (accumulate + 0 0 n ++ (lambda (i) (nChooseK n i)) >)))
+    (accumulate-i + 0 0 n (lambda (i) (nChooseK n i)) ++)))
 
 (define divisorsSum
   (lambda (number)
-    (accumulate + 0 1 number ++ (lambda (i) (if (zero? (modulo number i)) i 0)) >)))
+    (accumulate-i + 0 1 number (lambda (i) (if (zero? (modulo number i)) i 0)) ++)))
 
 (define count
   (lambda (p? a b)
-    (accumulate + 0 a b ++ (lambda (i) (if (p? i) 1 0)) >)))
+    (accumulate-i + 0 a b (lambda (i) (if (p? i) 1 0)) ++)))
 
 (define existsSimple?
   (lambda (p? a b)
@@ -141,13 +136,20 @@
              (check-false (existsInInterval? 1 100 zero?))]
   )
 
+(run-tests testExistsInInterval?)
+
 (define forEachSimple?
   (lambda (p? a b)
     (= (count p? a b) (+ (- b a) 1))))
 
+(define complement
+  (lambda (predicate?)
+    (lambda (expression)
+      (not (predicate? expression)))))
+
 (define forEach?
   (lambda (from to predicate? mappingFunction step stop?)
-    (not (exists? from to (lambda (i) (not (predicate? i))) mappingFunction step stop?))))
+    (not (exists? from to (complement predicate?) mappingFunction step stop?))))
 
 (define forEachInInterval?
   (lambda (a b p?)
@@ -164,6 +166,8 @@
              (check-true (forEachInInterval? 1 100 number?))]
   )
 
+(run-tests testForEachInInterval?)
+
 (define divides?
   (lambda (candidate number)
     (zero? (modulo number candidate))))
@@ -172,7 +176,8 @@
   (lambda (number)
     (and (not (= number 1))
          (forEachInInterval? 2 (sqrt number)
-                             (lambda (candidate) (not (divides? candidate number)))))))
+                             (complement (lambda (candidate)
+                                           (divides? candidate number)))))))
 
 (define-test-suite testPrime?
   [test-case "1 is not a prime"
@@ -190,6 +195,8 @@
              (check-false (prime? 169))]
   )
 
+(run-tests testPrime?)
+
 (define constantly
   (lambda (constant)
     (lambda (number) constant)))
@@ -198,8 +205,3 @@
   (lambda (function)
     (lambda (a b)
       (function b a))))
-
-(define complement
-  (lambda (predicate?)
-    (lambda (expression)
-      (not (predicate? expression)))))
