@@ -310,3 +310,85 @@
   (check-equal? (insertionSort '(1)) '(1))
   (check-equal? (insertionSort '(5 4 3 2 1)) '(1 2 3 4 5))
   )
+
+(define arity
+  (lambda arguments
+    (length arguments)))
+
+(define compose
+  (lambda functions
+    (foldr (lambda (f composition)
+             (lambda (argument)
+               (f (composition argument)))) id functions)))
+
+(define square
+  (lambda (number)
+    (* number number)))
+
+(define plusOneSquared (compose square ++))
+(define f (compose -- square ++ (lambda (x) (* 2 x))))
+
+(module+ test
+  (check-eqv? (f 5) 120)
+  (check-eqv? (f 0) 0)
+  )
+
+(define removeAssoc
+  (lambda (key list)
+    (filter (lambda (pair)
+              (not (equal? (car pair) key))) list)))
+
+(define associativeList '((a . 1) (b . 2) (c . 3)))
+
+(module+ test
+  (check-equal? (removeAssoc 'z associativeList) associativeList)
+  (check-equal? (removeAssoc 'a associativeList) (cdr associativeList))
+  )
+
+(define addAssoc
+  (lambda (key value list)
+    (let ([newPair (cons key value)])
+      (cons newPair (removeAssoc key list)))))
+
+(module+ test
+  (check-equal? (addAssoc 'd 0 associativeList) (cons '(d . 0) associativeList))
+  (check-equal? (addAssoc 'a 10 associativeList) (cons '(a . 10) (cdr associativeList)))
+  )
+
+(define keyOf car)
+(define valueOf cdr)
+
+(define groupBy
+  (lambda (function inputValues)
+    (define makePair
+      (lambda (value)
+        (cons (function value) value)))
+    (define makeGroupValue list)
+    (define addToGroupValue
+      (lambda (value group)
+        (let ([groupValue (cadr group)])
+          (makeGroupValue (cons value groupValue)))))
+    (define operation
+      (lambda (grouped pair)
+        (let* ([group (assoc (keyOf pair) grouped)]
+               [groupValue (if (not group)
+                               (makeGroupValue (list (valueOf pair)))
+                               (addToGroupValue (valueOf pair) group))])
+          (addAssoc (keyOf pair) groupValue grouped))))
+    (let ([pairs (map makePair inputValues)])
+      (foldl operation '() pairs))))
+
+(define map
+  (lambda (function list . lists)
+    (define mapSingle
+      (lambda (function list)
+        (reverse (foldl (lambda (mapped item)
+                          (cons (function item) mapped)) '() list))))
+    (if (or (null? list) (null? lists))
+        (mapSingle function list)
+        (let ([heads (cons (car list)
+                           (mapSingle car lists))]
+              [tails (cons (cdr list)
+                           (mapSingle cdr lists))])
+          (cons (apply function heads)
+                (apply map (cons function tails)))))))
