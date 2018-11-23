@@ -138,13 +138,49 @@
 (define cyclicGraph '((1 2 3)
                       (2 1 3)
                       (3 1 4)
-                      (4 1)))
+                      (4 1)
+                      (5)))
 
 (module+ test
   (require rackunit)
 
   (check-equal? (dfs-path 1 4 acyclicGraph) '(1 3 4))
   (check-equal? (dfs-path 1 4 cyclicGraph) '(1 2 3 4))
+  (check-false (dfs-path 1 5 cyclicGraph))
+  
   (check-equal? (DFS-path 1 4 acyclicGraph) '(1 3 4))
   (check-equal? (DFS-path 1 4 cyclicGraph) '(1 2 3 4))
+  (check-false (DFS-path 1 5 cyclicGraph))
+  )
+
+(define bfsPath
+  (lambda (start end graph)
+    (define extendPath
+      (lambda (path)
+        (let ([vertex (car path)])
+          (mapChildren (lambda (child)
+                         (cons child path)) vertex graph))))
+    (define remainsAcyclic?
+      (lambda (path)
+        (not (memv (car path) (cdr path)))))
+    (define extendPathAcyclic
+      (lambda (path)
+        (filter remainsAcyclic? (extendPath path))))
+    (define extend
+      (lambda (paths)
+        (apply append (map extendPathAcyclic paths))))
+    (define targetPath
+      (lambda (path)
+        (and (eqv? (car path) end) (reverse path))))
+    (define bfsLevel
+      (lambda (level)
+        (and (not (null? level))
+             (or (search targetPath level)
+                 (bfsLevel (extend level))))))
+    (bfsLevel (list (list start)))))
+
+(module+ test
+  (check-equal? (bfsPath 1 4 acyclicGraph) '(1 3 4))
+  (check-equal? (bfsPath 1 4 cyclicGraph) '(1 3 4))
+  (check-false (bfsPath 1 5 cyclicGraph))
   )
