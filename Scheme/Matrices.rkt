@@ -119,7 +119,7 @@
 
 (define transponse
   (lambda (matrix)
-    (reverse (accumulate-i (lambda (tail head) (cons head tail))
+    (reverse (accumulate-i reverseCons
                            '()
                            0
                            (-- (columnsCount matrix))
@@ -177,4 +177,110 @@
   (check-equal? (multiplyMatrices m E) m)
   (check-equal? (multiplyMatrices E m) m)
   (check-equal? (multiplyMatrices (scaleMatrix 5 E) m) (scaleMatrix 5 m))
+  )
+
+(define foldl
+  (lambda (operation neutralElement list)
+    (if (null? list)
+        neutralElement
+        (foldl operation
+               (operation neutralElement (car list))
+               (cdr list)))))
+
+(define reverseCons
+  (lambda (tail head)
+    (cons head tail)))
+
+(define take
+  (lambda (count items)
+    (if (or (zero? count) (null? items))
+        '()
+        (cons (car items) (take (-- count) (cdr items))))))
+
+(module+ test
+  (check-equal? (take 123 '()) '())
+  (check-equal? (take 0 '(1 2 3)) '())
+  (check-equal? (take 2 '(1)) '(1))
+  (check-equal? (take 2 '(1 2 3)) '(1 2))
+  (check-equal? (take 2 '(1 2)) '(1 2))
+  )
+
+(define diagonalRelative
+  (lambda (matrix term)
+    (reverse (accumulate-i reverseCons
+                           '()
+                           0
+                           (-- (rowsCount matrix))
+                           (lambda (i) (term (getRow i matrix) i))
+                           ++))))
+
+(define aboveDiagonal
+  (lambda (matrix)
+    (take (-- (rowsCount matrix))
+          (diagonalRelative matrix
+                            (lambda (row i) (list-tail row (++ i)))))))
+
+(module+ test
+  (check-equal? (aboveDiagonal E) '((0 0) (0)))
+  (check-equal? (aboveDiagonal m) '((2 3) (6)))
+  )
+
+(define underDiagonal
+  (lambda (matrix)
+    (cdr (diagonalRelative matrix (lambda (row i) (take i row))))))
+
+(module+ test
+  (check-equal? (underDiagonal E) '((0) (0 0)))
+  (check-equal? (underDiagonal m) '((4) (7 8)))
+  )
+
+(define mainDiagonal
+  (lambda (matrix)
+    (diagonalRelative matrix list-ref)))
+
+(module+ test
+  (check-equal? (mainDiagonal E) '(1 1 1))
+  (check-equal? (mainDiagonal m) '(1 5 9))
+  )
+
+(define secondDiagonal
+  (lambda (matrix)
+    (let ([colsCount (columnsCount matrix)])
+      (diagonalRelative matrix
+                        (lambda (row i) (list-ref row (- colsCount i 1)))))))
+
+(module+ test
+  (check-equal? (secondDiagonal E) '(0 1 0))
+  (check-equal? (secondDiagonal m) '(3 5 7))
+  )
+
+(define relativeTriangular
+  (lambda (direction)
+    (lambda (matrix)
+      (all? (lambda (row) (all? zero? row)) (direction matrix)))))
+
+(define lowerTriangular? (relativeTriangular underDiagonal))
+(define upperTriangular? (relativeTriangular aboveDiagonal))
+
+(define square?
+  (lambda (matrix)
+    (= (columnsCount matrix) (rowsCount matrix))))
+
+(define isNumber?
+  (lambda (number)
+    (lambda (candidate)
+      (= number candidate))))
+
+(define identityMatrix?
+  (lambda (matrix)
+    (and (square? matrix)
+         (all? (isNumber? 1) (mainDiagonal matrix))
+         (lowerTriangular? matrix)
+         (upperTriangular? matrix))))
+
+(module+ test
+  (check-true (identityMatrix? E))
+  (check-false (identityMatrix? m))
+  (check-false (identityMatrix? '((1 0) (0 1) (0 0))))
+  (check-false (identityMatrix? '((1 0 0) (0 1 0) (0 0 0))))
   )
