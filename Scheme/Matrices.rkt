@@ -75,15 +75,17 @@
   (lambda (index list)
     (define utility
       (lambda (skipped rest i)
-        (if (zero? i)
-            (append (reverse skipped) (cdr rest))
-            (utility (cons (car rest) skipped) (cdr rest) (- i 1)))))
+        (cond
+          [(null? rest) (reverse skipped)]
+          [(zero? i) (append (reverse skipped) (cdr rest))]
+          [else (utility (cons (car rest) skipped) (cdr rest) (-- i))])))
     (utility '() list index)))
 
 (module+ test
   (check-equal? (list-remove 0 '(0 1 2)) '(1 2))
   (check-equal? (list-remove 1 '(0 1 2)) '(0 2))
   (check-equal? (list-remove 2 '(0 1 2)) '(0 1))
+  (check-equal? (list-remove 10 '(0 1 2)) '(0 1 2))
   )
 
 (define removeRow list-remove)
@@ -99,9 +101,9 @@
 
 (define transponse-rec
   (lambda (matrix)
-    (if (null? (getRow 0 matrix))
-        '()
-        (cons (getColumn 0 matrix)
+    (cons (getColumn 0 matrix)
+          (if (= (columnsCount matrix) 1)
+              '()
               (transponse-rec (removeColumn 0 matrix))))))
 
 (define accumulate-i
