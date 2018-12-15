@@ -53,24 +53,87 @@
 (define addAssq (addAssociation eq?))
 (define addAssv (addAssociation eqv?))
 
+(define makeAssociativeList
+  (lambda (function keys)
+    (map (lambda (key)
+           (makeKeyValue key (function key)))
+         keys)))
 
 #| Graphs |#
 
+(define emptyGraph '())
+(define emptyGraph? null?)
+(define edgeStart car)
+(define edgeEnd cdr)
 (define verticesOf keysOf)
+
+(define makeGraph
+  (lambda (vertices)
+    (makeAssociativeList (lambda (vertex) '())
+                         vertices)))
+
+(define makeSet
+  (lambda (items)
+    (foldl (lambda (uniques item)
+             (if (member item uniques)
+                 uniques
+                 (cons item uniques)))
+           '()
+           items)))
+
+(define insertTwo
+      (lambda (lhs rhs items)
+        (cons lhs (cons rhs items))))
+
+(define verticesInEdges
+  (lambda (edges)
+    (let ([vertices (foldl (lambda (vertices edge)
+                             (insertTwo (edgeStart edge) (edgeEnd edge) vertices))
+                           '()
+                           edges)])
+      (makeSet vertices))))
+
+(define makeFromEdges
+  (lambda (edges)
+    (let ([subgraph (makeGraph (verticesInEdges edges))])
+      (foldl (lambda (graph edge)
+               (addEdge (edgeStart edge)
+                        (edgeEnd edge)
+                        graph))
+             subgraph
+             edges))))
+
+(define addEdge
+  (lambda (start end graph)
+    (if (edge? start end graph)
+        graph
+        (addAssoc start
+                  (cons end (childrenOf start graph))
+                  graph))))
+
+(define removeEdge
+  (lambda (start end graph)
+    (let ([newChildren (filter (lambda (vertex)
+                                 (not (eqv? vertex end)))
+                               (childrenOf start graph))])
+      (addAssoc start newChildren graph))))
+
+(define edge?
+  (lambda (u v graph)
+    (memv? v (childrenOf u graph))))
+
+(define memv?
+  (lambda (item list)
+    (search (lambda (candidate)
+              (eqv? candidate item)) list)))
 
 (define childrenOf
   (lambda (vertex graph)
     (valueOf (assv vertex graph))))
 
-(define edge?
-  (lambda (u v graph)
-    (search (lambda (vertex)
-              (eqv? vertex v)) (childrenOf u graph))))
-
 (define vertex?
-  (lambda (label graph)
-    (search (lambda (vertex)
-              (eqv? label vertex)) (verticesOf graph))))
+  (lambda (v graph)
+    (memv? v (verticesOf graph))))
 
 (define mapChildren
   (lambda (function vertex graph)
@@ -90,45 +153,102 @@
     (filter (lambda (candidate)
               (edge? candidate vertex graph)) (verticesOf graph))))
 
+(define addVertex
+  (lambda (v graph)
+    (if (vertex? v graph)
+        graph
+        (addAssoc v '() graph))))
+
+(define removeVertex
+  (lambda (v graph)
+    (define filterPair
+      (lambda (pair)
+        (makeKeyValue (keyOf pair)
+                      (filter (lambda (vertex)
+                                (not (eqv? v vertex)))
+                              (valueOf pair)))))
+    (if (vertex? v graph)
+        (let ([filteredGraph (map filterPair graph)])
+          (removeAssv v filteredGraph))
+        graph)))
+
+(define outDegreeOf
+  (lambda (vertex graph)
+    (length (childrenOf vertex graph))))
+
+(define inDegreeOf
+  (lambda (vertex graph)
+    (length (parentsOf vertex graph))))
+
+(define edgesLeaving
+  (lambda (vertex graph)
+    (map (lambda (child)
+           (cons vertex child))
+         (childrenOf vertex graph))))
+
+(define edgesOf
+  (lambda (graph)
+    (let ([listsOfLists (map (lambda (vertex)
+                               (edgesLeaving vertex graph))
+                             (verticesOf graph))])
+      (apply append listsOfLists))))
+
 (define symmetric?
   (lambda (graph)
     (all? (lambda (predecessor)
             (all? (lambda (successor)
-                    (edge? successor predecessor))
+                    (edge? successor predecessor graph))
                   (childrenOf predecessor graph)))
           (verticesOf graph))))
 
+(define foldl
+  (lambda (operation neutralElement list)
+    (if (null? list)
+        neutralElement
+        (foldl operation
+               (operation neutralElement (car list))
+               (cdr list)))))
+
+(define complementOf
+  (lambda (graph)
+    (define addInvertedEdge
+      (lambda (subgraph edge)
+        (addEdge (edgeEnd edge) (edgeStart edge) subgraph)))
+    (foldl addInvertedEdge
+           (makeGraph (verticesOf graph))
+           (edgesOf graph))))
+
 (define dfs-path
-  (lambda (u v graph)
+  (lambda (source target graph)
     (define dfs
       (lambda (path)
         (let ([current (car path)])
           (cond
-            [(eqv? v current) (reverse path)]
+            [(eqv? target current) (reverse path)]
             [(memv current (cdr path)) #f]
             [else (searchChild (lambda (child)
                                  (dfs (cons child path)))
                                current
                                graph)]))))
-    (dfs (list u))))
+    (dfs (list source))))
 
 (define safeCons
   (lambda (head tail)
     (and tail (cons head tail))))
 
 (define DFS-path
-  (lambda (u v graph)
+  (lambda (source target graph)
     (define dfs
       (lambda (current visited)
         (cond
-          [(eqv? current v) (list current)]
+          [(eqv? current target) (list current)]
           [(memv current visited) #f]
           [else (let ([subpath (searchChild (lambda (child)
                                               (dfs child (cons current visited)))
                                             current
                                             graph)])
                   (safeCons current subpath))])))
-    (dfs u '())))
+    (dfs source '())))
 
 (define acyclicGraph '((1 3 2)
                        (2 4)
@@ -184,3 +304,33 @@
   (check-equal? (bfsPath 1 4 cyclicGraph) '(1 3 4))
   (check-false (bfsPath 1 5 cyclicGraph))
   )
+
+(define path?
+  (lambda (source target graph)
+    (pair? (dfs-path source target graph))))
+
+(define acyclic?
+  (lambda (graph)
+    (define dfsCycle?
+      (lambda (current visited)
+        (or (memv? current visited)
+            (searchChild (lambda (child)
+                           (dfsCycle? child (cons current visited)))
+                         current
+                         graph))))
+    (or (emptyGraph? graph)
+        (dfsCycle? (car (verticesOf graph)) '()))))
+
+(define singleton?
+  (lambda (list)
+    (and (not (null? list))
+         (null? (cdr list)))))
+
+(define containsPath?
+  (lambda (path graph)
+    (let ([start (car path)])
+      (if (singleton? path)
+          (vertex? start graph)
+          (and (vertex? start graph)
+               (edge? start (cadr path) graph)
+               (containsPath? (cdr path) graph))))))
