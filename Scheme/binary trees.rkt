@@ -96,12 +96,12 @@
 
 (define allLevels
   (lambda (tree)
-    (accumulate-i (lambda (accumulated level) (cons level accumulated))
-                  '()
-                  0
-                  (-- (depth tree))
-                  (lambda (i) (treeLevel i tree))
-                  ++)))
+    (reverse (accumulate-i (lambda (accumulated level) (cons level accumulated))
+                           '()
+                           0
+                           (-- (depth tree))
+                           (lambda (i) (treeLevel i tree))
+                           ++))))
 
 (define mapTree
   (lambda (function tree)
@@ -174,3 +174,41 @@
                     (<= (rootOf tree) min)
                     (binarySearchTree? (leftSubtreeOf tree))
                     (binarySearchTree? (rightSubtreeOf tree))))))))
+
+(define makeBSTOptimal
+  (lambda (direction neutralElement)
+    (letrec ([bstOptimal (lambda (tree)
+                           (cond
+                             [(emptyTree? tree) neutralElement]
+                             [(emptyTree? (direction tree)) (rootOf tree)]
+                             [else (bstOptimal (direction tree))]))])
+      bstOptimal)))
+
+(define bstMin (makeBSTOptimal leftSubtreeOf +inf.0))
+(define bstMax (makeBSTOptimal rightSubtreeOf -inf.0))
+
+(define splitAt
+  (lambda (index items)
+    (define utility
+      (lambda (skipped i rest)
+        (if (or [null? rest] [zero? i])
+            (let ([left (reverse skipped)])
+              (cons left rest))
+            (utility (cons (car rest) skipped)
+                     (-- i)
+                     (cdr rest)))))
+    (utility '() index items)))
+
+(define bstFromSortedList
+  (lambda (items)
+    (let ([count (length items)])
+      (if (zero? count)
+          emptyTree
+          (let* ([middle (quotient count 2)]
+                 [split (splitAt middle items)]
+                 [left (car split)]
+                 [right (cddr split)]
+                 [root (cadr split)])
+            (makeTree (bstFromSortedList left)
+                      root
+                      (bstFromSortedList right)))))))
