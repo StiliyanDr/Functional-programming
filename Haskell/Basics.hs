@@ -4,7 +4,7 @@ select :: Bool -> t -> t -> t
 select condition lhs rhs = if condition then lhs else rhs
 
 plusN :: Int -> (Int -> Int)
-plusN n = (+) n
+plusN n = (+ n)
 
 increment :: Int -> Int
 increment number = (plusN 1) number
