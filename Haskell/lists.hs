@@ -19,7 +19,7 @@ foldLeft operation neutralElement (head : tail) =
   where subresult = operation neutralElement head
 
 foldLeft1 :: (a -> a -> a) -> [a] -> a
-foldLeft1 operation (head : tail) = foldLeft opertaion head tail
+foldLeft1 operation (head : tail) = foldLeft operation head tail
   
 foldRight :: (t -> r -> r) -> r -> [t] -> r
 foldRight _ neutralElement [] = neutralElement
