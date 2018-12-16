@@ -1,6 +1,6 @@
-module Fourth tasks where
+module FourthTasks where
 import Lists
-import Prelude hiding (all)
+import Prelude hiding (zip, map, all)
 
 sumOfProducts :: Num a => [[a]] -> a
 sumOfProducts lists = sumOf products
