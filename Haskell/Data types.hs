@@ -50,6 +50,9 @@ data BinaryTree item = EmptyTree | BinaryTree { root :: item,
 						rightSubtree :: BinaryTree item }
 		                                deriving (Eq, Ord, Show)
 
+isEmptyTree :: BinaryTree item -> Bool
+isEmptyTree EmptyTree = True
+isEmptyTree _ = False
 
 makeLeaf :: item -> BinaryTree item
 makeLeaf item = BinaryTree item EmptyTree EmptyTree
@@ -144,6 +147,31 @@ bloomWith function (BinaryTree root leftSubtree rightSubtree) =
 bloom :: BinaryTree item -> BinaryTree item
 bloom = bloomWith id
 
+rotateLeft :: BinaryTree item -> BinaryTree item
+rotateLeft EmptyTree = EmptyTree
+rotateLeft tree@(BinaryTree _ _ EmptyTree) = tree
+rotateLeft (BinaryTree root leftSubtree (BinaryTree rootOfRightSubtree
+                                                    leftSubtreeOfRightSubtree
+						    rightSubtreeOfRightSubtree)) =
+ BinaryTree rootOfRightSubtree
+            (BinaryTree root leftSubtree leftSubtreeOfRightSubtree)
+	    rightSubtreeOfRightSubtree
+
+rotateRight :: BinaryTree item -> BinaryTree item
+rotateRight EmptyTree = EmptyTree
+rotateRight tree@(BinaryTree _ EmptyTree _) = tree
+rotateRight (BinaryTree root
+                        (BinaryTree rootOfLeftSubtree
+			            leftSubtreeOfLeftSubtree
+				    rightSubtreeOfLeftSubtree)
+		        rightSubtree) =
+ BinaryTree rootOfLeftSubtree
+            leftSubtreeOfLeftSubtree
+	    (BinaryTree root
+	                rightSubtreeOfLeftSubtree
+			rightSubtree)
+
+
 -- Binary search trees --
 
 insertInBST :: Ord item => item -> BinaryTree item -> BinaryTree item
@@ -174,4 +202,65 @@ listToBST items = foldr insertInBST EmptyTree items
 
 bstSort :: Ord item => [item] -> [item]
 bstSort = bstToList . listToBST
+
+removeFromBST :: Ord item => item -> BinaryTree item -> BinaryTree item
+removeFromBST _ EmptyTree = EmptyTree
+removeFromBST item (BinaryTree root leftSubtree rightSubtree)
+ | item < root = BinaryTree root (removeFromBST item leftSubtree) rightSubtree
+ | item > root = BinaryTree root leftSubtree (removeFromBST item rightSubtree)
+ | isEmptyTree leftSubtree = rightSubtree
+ | otherwise = BinaryTree (maxInBST leftSubtree)
+                          (removeMax leftSubtree)
+			  rightSubtree
+
+maxInBST :: BinaryTree item -> item
+maxInBST (BinaryTree root _ EmptyTree) = root
+maxInBST (BinaryTree _ _ rightSubtree) = maxInBST rightSubtree
+
+removeMax :: BinaryTree item -> BinaryTree item
+removeMax EmptyTree = EmptyTree
+removeMax (BinaryTree _ leftSubtree EmptyTree) = leftSubtree
+removeMax (BinaryTree root leftSubtree rightSubtree) =
+ BinaryTree root leftSubtree (removeMax rightSubtree)
+
+-- Associative memory, MAP --
+
+data KeyValue key value = KeyValue { keyOf :: key, valueOf :: value }
+
+type Map key value = BinaryTree (KeyValue key value)
+
+insert :: Ord key => key -> value -> Map key value -> Map key value
+insert key value EmptyTree = makeLeaf (KeyValue key value)
+insert key value (BinaryTree root leftSubtree rightSubtree)
+ | key == keyOf root = BinaryTree (KeyValue key value) leftSubtree rightSubtree
+ | key < keyOf root = BinaryTree root (insert key value leftSubtree) rightSubtree
+ | otherwise = BinaryTree root leftSubtree (insert key value rightSubtree)
+
+search :: Ord key => key -> Map key value -> Maybe value
+search _ EmptyTree = Nothing
+search key (BinaryTree root leftSubtree rightSubtree)
+ | key == keyOf root = Just (valueOf root)
+ | key < keyOf root = search key leftSubtree
+ | otherwise = search key rightSubtree
+
+elementsCount :: Map key value -> Integer
+elementsCount = nodesCountOf
+
+isEmpty :: Map key value -> Bool
+isEmpty = (== 0) . elementsCount
+
+valuesOf :: Map key value -> [value]
+valuesOf = map valueOf . bstToList
+
+keysOf :: Map key value -> [key]
+keysOf = map keyOf . bstToList
+
+m :: Map Int String
+m = BinaryTree { root = (KeyValue 5 "five"),
+                 leftSubtree = BinaryTree { root = (KeyValue 3 "three"),
+		                            leftSubtree = EmptyTree,
+				            rightSubtree = EmptyTree },
+		 rightSubtree = BinaryTree { root = (KeyValue 7 "seven"),
+		                             leftSubtree = EmptyTree,
+				             rightSubtree = EmptyTree } }
 
