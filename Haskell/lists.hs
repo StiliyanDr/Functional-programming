@@ -49,7 +49,7 @@ productOf :: Num a => [a] -> a
 productOf list = foldLeftStrict (*) 1 list
 
 concatenate :: [[item]] -> [item]
-concatenate = foldRight (++) []
+concatenate lists = foldRight (++) [] lists
 
 zipWith :: (a -> b -> c) -> [a] -> [b] -> [c]
 zipWith _ [] _ = []
@@ -61,10 +61,11 @@ zip :: [a] -> [b] -> [(a, b)]
 zip = zipWith (,)
 
 unzip :: [(a, b)] -> ([a], [b])
-unzip = foldRight (\(a, b) (lhs, rhs) -> (a : lhs, b : rhs)) ([], [])
+unzip pairs =
+ foldRight (\(a, b) (lhs, rhs) -> (a : lhs, b : rhs)) ([], []) pairs
 
 lengthOf :: [a] -> Int
-lengthOf = foldLeft (\count _ -> count + 1) 0
+lengthOf list = foldLeftStrict (\count _ -> count + 1) 0 list
 
 reverse :: [a] -> [a]
 reverse = foldLeft (\reversed item -> (item : reversed)) []
@@ -86,7 +87,7 @@ filter predicate list = foldRight insertIfPassing [] list
  where insertIfPassing item filtered =
         if (predicate item)
         then (item : filtered)
-		else filtered
+	else filtered
 
 all :: (item -> Bool) -> [item] -> Bool
 all predicate [] = True
