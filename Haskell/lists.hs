@@ -90,7 +90,7 @@ filter predicate list = foldRight insertIfPassing [] list
 	else filtered
 
 all :: (item -> Bool) -> [item] -> Bool
-all predicate [] = True
+all _ [] = True
 all predicate (head : tail) = predicate head && all predicate tail
 -- all predicate list = and (map predicate list)
 
