@@ -110,8 +110,8 @@ uniqueElementsOf :: Eq item => [item] -> [item]
 uniqueElementsOf list = foldRight insertIfUnique [] list
  where insertIfUnique item uniques =
         if (isMember item uniques)
-	    then uniques
-	    else (item : uniques)
+	then uniques
+	else (item : uniques)
 
 repeat :: item -> [item]
 repeat item = (item : repeat item)
