@@ -31,6 +31,11 @@ foldRight1 _ [a] = a
 foldRight1 operation (head : tail) = operation head subresult
  where subresult = foldRight1 operation tail
 
+foldLeftStrict :: (r -> a -> r) -> r -> [a] -> r
+foldLeftStrict _ neutralElement [] = neutralElement
+foldLeftStrict operation neutralElement (head : tail) =
+ (foldLeftStrict operation $! (operation neutralElement head)) tail
+
 and :: [Bool] -> Bool
 and = foldLeft (&&) True
 
@@ -38,10 +43,10 @@ or :: [Bool] -> Bool
 or = foldRight (||) False
 
 sumOf :: Num a => [a] -> a
-sumOf = foldLeft (+) 0
+sumOf list = foldLeftStrict (+) 0 list
 
 productOf :: Num a => [a] -> a
-productOf = foldLeft (*) 1
+productOf list = foldLeftStrict (*) 1 list
 
 concatenate :: [[item]] -> [item]
 concatenate = foldRight (++) []
