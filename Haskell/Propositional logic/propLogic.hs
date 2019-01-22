@@ -78,3 +78,70 @@ variablesOf (Or fi psi) = variablesUnion fi psi
 variablesOf (And fi psi) = variablesUnion fi psi
 variablesOf (Implies fi psi) = variablesUnion fi psi
 
+bind :: [Name] -> [Bool] -> Environment
+bind = zip
+
+allBools :: Int -> [[Bool]]
+allBools n = foldr extendLists [[]] [1..n]
+ where extendLists _ lists =
+        insertBoolean True lists ++ insertBoolean False lists
+       insertBoolean value lists =
+        map (value:) lists
+
+allEnvironments :: [Name] -> [Environment]
+allEnvironments names = map (bind names) (allBools namesCount)
+ where namesCount = length names
+
+isTautology :: PropFormula -> Bool
+isTautology fi = all evaluatesToTrue environments
+ where evaluatesToTrue env = valueOf fi env
+       environments = allEnvironments (variablesOf fi)
+
+isContradiction :: PropFormula -> Bool
+isContradiction fi = isTautology (Not fi)
+
+tautology :: PropFormula
+tautology = Variable "x" `Implies` Variable "x"
+
+contradiction :: PropFormula
+contradiction = Not tautology
+
+isSatisfiable :: PropFormula -> Bool
+isSatisfiable fi = not (isContradiction fi)
+
+satisfies :: PropFormula -> Environment -> Bool
+satisfies fi env = valueOf fi env
+
+semanticallyImplies :: PropFormula -> PropFormula -> Bool
+semanticallyImplies fi psi = all (satisfies psi) environmentsSatisfyingFi
+ where environmentsSatisfyingFi =
+        filter (satisfies fi) (allEnvironments $ variablesUnion fi psi)
+
+(|=) :: PropFormula -> PropFormula -> Bool
+(|=) = semanticallyImplies
+
+areSemanticallyEquivalent :: PropFormula -> PropFormula -> Bool
+areSemanticallyEquivalent fi psi = fi |= psi && psi |= fi
+
+(|=|) :: PropFormula -> PropFormula -> Bool
+(|=|) = areSemanticallyEquivalent
+
+isAxiom:: PropFormula -> Bool
+isAxiom ((fi `Implies` (chi `Implies` psi)) `Implies` ((alpha `Implies` beta) `Implies` (gamma `Implies` theta))) =
+ fi == alpha && fi == gamma && chi == beta && psi == theta
+isAxiom ((fi `Implies` psi) `Implies` ((chi `Implies` alpha) `Implies` ((beta `Or` gamma) `Implies` theta))) =
+ fi == beta && psi == alpha && psi == theta && chi == gamma
+isAxiom ((fi `Implies` psi) `Implies` ((chi `Implies` (Not alpha)) `Implies` (Not beta))) =
+ fi == chi && fi == beta && psi == alpha
+isAxiom (fi `Implies` ((Not psi) `Implies` _)) = fi == psi
+isAxiom (fi `Implies` (chi `Implies` (psi `And` theta))) = fi == psi && chi == theta
+isAxiom (fi `Implies` (chi `Implies` psi)) = fi == psi
+isAxiom ((fi `And` psi) `Implies` chi) = fi == chi || psi == chi
+isAxiom (fi `Implies` (psi `Or` chi)) = fi == psi || fi == chi
+isAxiom (fi `Or` (Not psi)) = fi == psi
+isAxiom _ = False
+
+modusPonens :: PropFormula -> PropFormula -> PropFormula -> Bool
+modusPonens fi (psi `Implies` chi) theta = fi == psi && chi == theta
+modusPonens _ _ _ = False
+
